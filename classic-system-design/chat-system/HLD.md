@@ -79,7 +79,7 @@ The architecture is centered around a stateful **Chat Service** that maintains p
 
 ### 5.3 High-Level Architecture Diagram
 
-```
+```text
 +----------------+      +----------------------+      +--------------------+
 | Mobile Client  |      |     Web Client       |      | Desktop Client     |
 +-------+--------+      +-----------+----------+      +---------+----------+
