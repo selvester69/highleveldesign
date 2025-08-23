@@ -3,6 +3,7 @@
 ## 1. Document Information
 
 ### Document Metadata
+
 - **Document Title**: ATM System - Object-Oriented Design
 - **Version**: 1.0
 - **Date**: 2025-08-22
@@ -10,6 +11,7 @@
 - **Document Status**: Draft
 
 ### Revision History
+
 | Version | Date       | Author          | Changes         |
 |---------|------------|-----------------|-----------------|
 | 1.0     | 2025-08-22 | Jules (AI Agent)| Initial version |
@@ -19,10 +21,13 @@
 ## 2. Executive Summary
 
 ### 2.1 Purpose
+
 This document provides an Object-Oriented Design (OOD) for an Automated Teller Machine (ATM). The design models the components of an ATM, user interactions, and its communication with a backend bank system to process transactions.
 
 ### 2.2 Scope
+
 **In Scope:**
+
 - User authentication via a card and PIN.
 - The ability to check the account balance.
 - The ability to deposit cash.
@@ -31,12 +36,14 @@ This document provides an Object-Oriented Design (OOD) for an Automated Teller M
 - Interaction with a remote bank server to validate and process transactions.
 
 **Out of Scope:**
+
 - The internal logic of the backend bank system. It will be treated as an external service.
 - Dispensing or accepting checks.
 - Transferring funds between accounts.
 - The physical hardware components (card reader, cash dispenser).
 
 ### 2.3 Key Classes/Objects
+
 - **ATM**: The main facade class that manages the machine's state and hardware components.
 - **State**: An interface for the State design pattern, with concrete states like `IdleState`, `CardInsertedState`, `AuthenticatedState`.
 - **Card**: A data object representing the user's ATM card.
@@ -45,6 +52,7 @@ This document provides an Object-Oriented Design (OOD) for an Automated Teller M
 - **Transaction**: An abstract class for transactions, with concrete subclasses like `BalanceInquiry`, `Deposit`, `Withdrawal`.
 
 ### 2.4 High-Level Design Overview
+
 The design is centered around the `ATM` class, which manages the machine's state using the **State design pattern**. The ATM transitions between states like `Idle`, `CardInserted`, `PIN_Validation`, `SelectOperation`, and `TransactionProcessing` based on user input. When a user initiates a transaction (e.g., `Withdrawal`), a `Transaction` object is created. The `ATM` class then uses the `BankService` interface to communicate with the backend bank system to authorize and execute this transaction. This design cleanly separates the ATM's own logic (state management, user interaction) from the external banking logic, and the use of the State pattern makes the complex user session flow manageable and robust.
 
 ---
@@ -52,6 +60,7 @@ The design is centered around the `ATM` class, which manages the machine's state
 ## 3. System Overview & Use Cases
 
 ### 3.1 Core Use Cases
+
 - **UC-01: Authenticate User**
   1. User inserts an ATM card.
   2. The system prompts for a PIN.
@@ -79,7 +88,7 @@ The design is centered around the `ATM` class, which manages the machine's state
 
 ## 4. Class Diagram
 
-```
+```text
 +--------------+<>----1----+-----------------+      +-----------------+
 | ATM          |          | State(Interface)|      | Card            |
 |--------------|          |-----------------|      |-----------------|
@@ -121,6 +130,7 @@ The design is centered around the `ATM` class, which manages the machine's state
 ```
 
 ### 4.1 Key Classes
+
 - **ATM**: The main context class, managing the state of the ATM.
 - **State (Interface)**: Defines the actions a user can perform in a given state. Concrete subclasses (`IdleState`, `AuthenticatedState`, etc.) implement this interface. The State pattern is central to this design.
 - **Card**: A simple data object representing the physical card.
@@ -132,7 +142,7 @@ The design is centered around the `ATM` class, which manages the machine's state
 
 ## 5. Object Interaction / Sequence Diagram (Withdraw Cash)
 
-```
+```text
 +----------+      +--------------+      +--------------------+      +-------------+
 |  User    |      |     ATM      |      | AuthenticatedState |      | BankService |
 +----------+      +--------------+      +--------------------+      +-------------+
@@ -166,7 +176,7 @@ The design is centered around the `ATM` class, which manages the machine's state
 
 ## 6. State Diagram
 
-```
+```text
                  +-----------+
                  |   Idle    |
                  +-----------+
@@ -204,6 +214,7 @@ The design is centered around the `ATM` class, which manages the machine's state
 ## 7. API Design (Class Methods)
 
 ### 7.1 `ATM` Class
+
 - `ATM(BankService bankService, double initialCash)`: Constructor.
 - `void insertCard(Card card)`: Called by the hardware. Delegates to the current state.
 - `void enterPIN(int pin)`: Delegates to the current state.
@@ -212,6 +223,7 @@ The design is centered around the `ATM` class, which manages the machine's state
 - `void ejectCard()`: A final action to return the card.
 
 ### 7.2 `State` Interface
+
 - `void insertCard(ATM atm, Card card)`
 - `void enterPIN(ATM atm, int pin)`
 - `void selectTransaction(ATM atm, TransactionType type, double amount)`
@@ -222,6 +234,7 @@ The design is centered around the `ATM` class, which manages the machine's state
 ## 8. - 15. Remaining Sections
 
 For this OOD problem, the remaining sections are summarized:
+
 - **Security**: The connection to the bank must be secure (e.g., over a VPN or private network with TLS). PINs should never be logged. The physical security of the machine is also a major concern.
 - **Scalability**: For the software model, scalability is not a concern. For the backend `BankService`, it would need to handle transactions from thousands of ATMs concurrently.
 - **Deployment**: The ATM software runs on embedded hardware within the machine itself.
