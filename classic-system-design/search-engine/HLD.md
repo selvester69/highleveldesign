@@ -150,37 +150,31 @@ This system's purpose is to index documents collected by a web crawler and provi
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-+----------------+   (1. Document Stream)   +----------------------+
-|  Web Crawler   | -----------------------> | Indexing Service     |
-+----------------+                          | (Document Processor) |
-                                            +-----------+----------+
-                                                        | (2. (Term, DocID) pairs)
-                                                        v
-                                            +----------------------+
-                                            | Index Builder        |
-                                            | (Creates Index Segments) |
-                                            +-----------+----------+
-                                                        | (3. Index Segments)
-                                                        v
-                                            +----------------------+
-                                            | Distributed File     |
-                                            | System (S3/HDFS)     |
-                                            +----------------------+
-                                                        ^
-                                                        | (4. Loads Segments)
-+----------------+   (7. Results)   +----------------------+
-|      User      | <-------------- | Query Service        |
-+----------------+   (6. Request)  | (Coordinator/Aggregator) |
-                                   +-----------+----------+
-                                               | (5. Scatter/Gather)
-                                               v
-                  +------------------------------------------------------+
-                  |              Index Serving Nodes (Shards)            |
-                  |                                                      |
-                  |  [ Shard 1 Rep A ] [ Shard 2 Rep A ] [ Shard 3 Rep A ] |
-                  |  [ Shard 1 Rep B ] [ Shard 2 Rep B ] [ Shard 3 Rep B ] |
-                  +------------------------------------------------------+
+```mermaid
+graph TD
+    subgraph Indexing Pipeline
+        Crawler[Web Crawler] --> IndexingSvc[Indexing Service]
+        IndexingSvc -- Term, DocID pairs --> IndexBuilder[Index Builder]
+        IndexBuilder -- Index Segments --> DFS[(Distributed File System <br> S3/HDFS)]
+    end
+
+    subgraph Query Pipeline
+        User[User]
+        QuerySvc[Query Service <br> (Coordinator)]
+
+        subgraph Index Serving Nodes
+            direction LR
+            Shard1[Shard 1<br>Replica A, B]
+            Shard2[Shard 2<br>Replica A, B]
+            ShardN[Shard N...]
+        end
+
+        User -- 6. Request --> QuerySvc
+        QuerySvc -- 5. Scatter/Gather --> IndexServingNodes
+        QuerySvc -- 7. Results --> User
+    end
+
+    DFS -- 4. Loads Segments --> IndexServingNodes
 ```
 
 ### 5.4 Component Overview

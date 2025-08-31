@@ -149,31 +149,31 @@ The system's purpose is to allow users to post links, vote on submissions, and v
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-+--------------+   (Submit, Comment, Vote)   +-----------------+
-| User's Client| --------------------------> |   API Gateway   |
-+--------------+                             +-------+---------+
-                                                     |
-             +---------------------------------------+---------------------------------------+
-             | (Writes)                              | (Reads)                               |
-             v                                       v                                       v
-+-----------------+                          +--------------------+                   +--------------------+
-|  Post/Comment Svc |                          | Feed Generation Svc  |                   | Post/Comment Read Svc|
-+--------+--------+                          +---------+----------+                   +--------------------+
-         |                                              |                                       ^
-         v                                              v                                       |
-+-----------------+                          +--------------------+                   +--------------------+
-| DB (PostgreSQL) |                          |  Feed Cache (Redis)|<------------------+ Ranking Service      |
-| (Users, Posts, |                          +--------------------+                   | (Batch Job)        |
-|  Comments)      |                                                                   +---------+----------+
-+-----------------+                                                                             ^
-         ^                                                                                      |
-         |                                                                                      |
-+--------+--------+                                                                             |
-|  Voting Service | <---------------------------------------------------------------------------+
-| (High-throughput|
-| queue & workers)|
-+-----------------+
+```mermaid
+graph TD
+    UC[User's Client] --> GW[API Gateway]
+
+    subgraph Write Path
+        GW -- Vote --> VS[Voting Service]
+        VS -- Enqueue --> VQ[Vote Queue <br> e.g., Kafka]
+        VW[Voting Workers] -- Consume --> VQ
+        VW -- Update Counts --> VC[Vote Cache <br> e.g., Redis]
+
+        GW -- Post/Comment --> PCS[Post/Comment Service]
+        PCS --> DB[(Primary DB <br> PostgreSQL)]
+    end
+
+    subgraph Read Path
+        GW -- Get Feed --> FGS[Feed Generation Service]
+        FGS --> FC[Feed Cache <br> e.g., Redis]
+    end
+
+    subgraph Background Jobs
+        RS[Ranking Service <br> (Batch Job)]
+        RS -- Reads --> DB
+        RS -- Reads --> VC
+        RS -- Writes Ranked List --> FC
+    end
 ```
 
 ### 5.4 Component Overview

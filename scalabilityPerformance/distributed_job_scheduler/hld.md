@@ -141,22 +141,30 @@ To provide a platform for programmatically authoring, scheduling, and monitoring
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-+----------------+       +-------------------+
-|      User      |------>|    Web Server     |
-| (via Browser)  |       | (UI / API)        |
-+----------------+       +---------+---------+
-                                   |
-                                   | (Read/Write State)
-+----------------+       +---------v---------+       +-------------------+
-|   DAG Files    |<----->|     Scheduler     |------>|   Message Queue   |
-| (Python Code)  |       +---------+---------+       +---------+---------+
-+----------------+                 |                           |
-                                   | (Read/Write State)        | (Consume Tasks)
-                         +---------v---------+       +---------v---------+
-                         | Metadata Database |<----->|      Workers      |
-                         |  (PostgreSQL)     |       | (Celery Executor) |
-                         +-------------------+       +-------------------+
+```mermaid
+graph TD
+    subgraph "User & Code"
+        User["User (via UI/API)"]
+        DAGs["DAG Files (Python Code)"]
+    end
+
+    subgraph "System Components"
+        WebServer["Web Server"]
+        Scheduler["Scheduler"]
+        Workers["Worker Pool"]
+        Queue["Message Queue"]
+        DB["Metadata Database"]
+    end
+
+    User --> WebServer
+    DAGs -- "Are parsed by" --> Scheduler
+
+    Scheduler -- "Queues tasks" --> Queue
+    Workers -- "Fetch tasks" --> Queue
+
+    WebServer -- "Read/Write State" <--> DB
+    Scheduler -- "Read/Write State" <--> DB
+    Workers -- "Update Task Status" --> DB
 ```
 
 ### 5.4 Component Overview

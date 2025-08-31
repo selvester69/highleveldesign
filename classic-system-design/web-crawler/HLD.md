@@ -169,46 +169,27 @@ The purpose of this system is to crawl the web in a scalable and efficient manne
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-                               +-----------------+
-                               |   Seed URLs     |
-                               +-------+---------+
-                                       |
-                                       v
-+-------------------------------------------------------------------------+
-|                               URL Frontier                              |
-|                                                                         |
-|  +-----------------+  +-----------------+  +--------------------------+ |
-|  |  URL Prioritizer  |  |  URL Queues     |  | URL Deduplication Filter | |
-|  | (By Host/Rank)    |  | (Per-Host)      |  | (e.g., Bloom Filter)     | |
-|  +-----------------+  +-------+---------+  +--------------------------+ |
-|                               |                                         |
-+-------------------------------|-----------------------------------------+
-                                | (URLs to Fetch)
-                                v
-+-------------------------------------------------------------------------+
-|                           Fetcher Nodes (Pool)                          |
-|                                                                         |
-| [ F1 ] [ F2 ] [ F3 ] ... [ Fn ]                                          |
-| - Fetches robots.txt (via Robots Service)                               |
-| - Fetches page content                                                  |
-| - Passes (URL, Content) to Parser                                       |
-+-------------------------------+-----------------------------------------+
-                                | (Raw HTML Content)
-                                v
-+-------------------------------------------------------------------------+
-|                           Parser Nodes (Pool)                           |
-|                                                                         |
-| [ P1 ] [ P2 ] [ P3 ] ... [ Pn ]                                          |
-| - Parses HTML to extract text and links                                 |
-| - Normalizes and cleans extracted links                                 |
-+-------------------------------+-----------------------------------------+
-      | (Extracted Text)          | (Extracted Links)
-      v                           v
-+-----------------+     +----------------------------------+
-|  Content Store  |     | Back to URL Frontier for         |
-| (e.g., S3/HDFS) |     | processing and potential queuing |
-+-----------------+     +----------------------------------+
+```mermaid
+graph TD
+    subgraph Crawling Pipeline
+        direction TB
+        Seed[Seed URLs] --> Frontier[URL Frontier]
+        Frontier -- URLs to Fetch --> Fetchers[Fetcher Nodes Pool]
+        Fetchers -- Raw HTML Content --> Parsers[Parser Nodes Pool]
+        Parsers -- Extracted Links --> Frontier
+        Parsers -- Extracted Text --> ContentStore[(Content Store <br> e.g., S3/HDFS)]
+    end
+
+    subgraph Frontier Internals
+        direction LR
+        Dedup[URL Deduplication Filter]
+        Queues[Per-Host URL Queues]
+        Prio[URL Prioritizer]
+    end
+
+    Frontier -- contains --> Dedup
+    Frontier -- contains --> Queues
+    Frontier -- contains --> Prio
 ```
 
 ### 5.4 Component Overview
