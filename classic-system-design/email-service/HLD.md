@@ -153,35 +153,37 @@ The system's purpose is to provide a complete email solution, allowing users to 
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-                                 +-------------------------+
-                                 | Other Email Servers     |
-                                 +-----------+-------------+
-                                             | (SMTP)
-                                             v
-+----------------+      +------------------------------------------------------+
-| User's Client  |      |              Edge Layer (Public-facing)              |
-| (Web, Outlook) |      |                                                      |
-+-------+--------+      | +----------------+  +------------------+  +----------+ |
-        |               | | MX Servers     |  |  Submission Srvs |  |  Access  | |
-        |<------------->| | (Receive Mail) |  | (Send Mail)      |  | Srvs(IMAP| |
-        |               | +-------+--------+  +--------+---------+  | /Web)    | |
-        |               |         |                    ^             +-----+----+ |
-        |               +---------|--------------------|-------------------|------+
-        |                         v                    |                   |
-        | (IMAP/HTTPS)            | (Incoming Mail)    | (Outgoing Mail)   |
-        |                         v                    |                   |
-+-------+------------------------------------------------------------------+-------+
-|                               Processing & Storage Layer (Internal)              |
-|                                                                                  |
-| +-----------------+<--+  +-----------------+<--+  +-----------------+<--+        |
-| | Mailbox Store   |   |  |   Filtering Svc |   |  |   Outbound Queue|   |        |
-| | (Durable DB)    |   |  | (Spam, Virus)   |   |  | (Queues mail for|   |        |
-| +-------+---------+   |  +-----------------+   |  |  delivery)      |   |        |
-|         ^             |                        |  +-----------------+   |        |
-|         |-------------+------------------------+------------------------+        |
-| (Store/Retrieve Mail)                                                            |
-+----------------------------------------------------------------------------------+
+```mermaid
+graph TD
+    subgraph Internet
+        OES[Other Email Servers]
+        UC[User's Client <br> (Web, Outlook)]
+    end
+
+    subgraph Your Infrastructure
+        subgraph Edge Layer
+            MX[MX Servers <br> (Receive Mail)]
+            SUB[Submission Servers <br> (Send Mail)]
+            AS[Access Servers <br> (IMAP/Web)]
+        end
+
+        subgraph Processing & Storage Layer
+            FS[Filtering Service <br> (Spam, Virus)]
+            OQ[Outbound Queue]
+            MS[Mailbox Store <br> (Durable DB)]
+        end
+    end
+
+    OES -- SMTP --> MX
+    MX -- Incoming Mail --> FS
+    FS --> MS
+
+    UC -- IMAP/HTTPS --> AS
+    AS <--> MS
+
+    UC -- SMTP --> SUB
+    SUB --> OQ
+    OQ -- Outgoing Mail --> OES
 ```
 
 ### 5.4 Component Overview

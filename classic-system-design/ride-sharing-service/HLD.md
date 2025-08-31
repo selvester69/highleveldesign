@@ -158,33 +158,43 @@ The system's purpose is to efficiently match riders seeking transportation with 
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-+----------------+      +----------------+      +------------------+
-|  Rider App     |      |   Driver App   |      | 3rd Party Maps   |
-+-------+--------+      +-------+--------+      +--------+---------+
-        |                      | (Location Updates)      ^
-        | (Trip Request)       v                         |
-        |               +----------------+               |
-        |               | Location Svc   |               |
-        |               | (Geospatial DB)|               |
-        |               +-------+--------+               | (ETAs, Routes)
-        v                       ^                        |
-+------------------------------------------------+       |
-|                  API Gateway                   |       |
-+-----------------------+------------------------+       |
-                        |                                |
-                        v                                |
-+------------------+    +------------------+    +------------------+
-|  Matching Svc    |--->|    Trip Svc      |<-->|  Notification Svc|
-| (Finds Drivers)  |    | (State Machine)  |    | (Push, SMS)      |
-+------------------+    +--------+---------+    +------------------+
-                                 |
-                                 v
-+------------------+    +------------------+
-|   User Svc       |<-->|   Payment Svc    |
-| (Profiles, Auth) |    | (Integrates with|
-+------------------+    |  Payment Gateway)|
-                        +------------------+
+```mermaid
+graph TD
+    subgraph Clients & External Services
+        RiderApp[Rider App]
+        DriverApp[Driver App]
+        Maps[3rd Party Maps]
+    end
+
+    subgraph Backend
+        APIGateway[API Gateway]
+
+        subgraph Core Services
+            LocationSvc[Location Service <br> (Geospatial DB)]
+            MatchingSvc[Matching Service]
+            TripSvc[Trip Service <br> (State Machine)]
+            NotificationSvc[Notification Service]
+            UserSvc[User Service]
+            PaymentSvc[Payment Service]
+        end
+    end
+
+    RiderApp -- Trip Request --> APIGateway
+    DriverApp -- Location Updates --> APIGateway
+    APIGateway --> LocationSvc
+    APIGateway --> MatchingSvc
+    APIGateway --> TripSvc
+    APIGateway --> UserSvc
+    APIGateway --> PaymentSvc
+
+    MatchingSvc -- Finds nearby drivers --> LocationSvc
+    MatchingSvc --> TripSvc
+
+    TripSvc <--> NotificationSvc
+    TripSvc -- Uses --> Maps
+    TripSvc -- Uses --> PaymentSvc
+    TripSvc -- Uses --> UserSvc
+
 ```
 
 ### 5.4 Component Overview
