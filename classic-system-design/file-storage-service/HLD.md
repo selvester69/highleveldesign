@@ -151,28 +151,26 @@ The system's purpose is to provide a durable, highly available storage solution 
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-+----------------+  (1. File change detected)
-| Client App     | -------------------------------------+
-+----------------+                                      |
-   |         ^                                          v
-   | (5. Download blocks)  +------------------+   (2. Update Metadata)
-   |         |             | Block Storage    | <--------------------+
-   |         +----------- | (S3)             |   (3. Upload Blocks) |
-   |                       +------------------+                      |
-   v                                                                 |
-+----------------+   (4. Long Poll for changes)   +------------------+
-| Notification Svc |<---------------------------- | Metadata Service |
-| (Real-time sync) |                              | (Manages file   |
-+----------------+                              | hierarchy,     |
-                                                | versions)        |
-                                                +--------+---------+
-                                                         |
-                                                         v
-                                                +------------------+
-                                                | Metadata DB      |
-                                                | (PostgreSQL, etc)|
-                                                +------------------+
+```mermaid
+graph TD
+    subgraph User Device
+        Client[Client Application]
+    end
+
+    subgraph Backend Services
+        MetaSvc[Metadata Service]
+        MetaDB[(Metadata DB<br>PostgreSQL)]
+        BlockStore[Block Storage<br>(S3)]
+        NotifySvc[Notification Service]
+    end
+
+    Client -- 1. File change detected --> MetaSvc
+    MetaSvc -- 2. Update Metadata --> MetaDB
+    Client -- 3. Upload Blocks --> BlockStore
+    MetaSvc -- Notifies --> NotifySvc
+    Client -- 4. Long Poll for changes --> NotifySvc
+    NotifySvc -- Push notification --> Client
+    Client -- 5. Download Blocks --> BlockStore
 ```
 
 ### 5.4 Component Overview

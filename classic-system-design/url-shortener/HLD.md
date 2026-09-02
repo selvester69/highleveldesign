@@ -172,53 +172,38 @@ The primary purpose of this system is to provide a highly available and scalable
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-                               +-------------------------+
-                               |      User / Client      |
-                               +-------------------------+
-                                           |
-                                           v
-                               +-------------------------+
-                               |   Load Balancer (LB)    |
-                               +-------------------------+
-                               /           |           \
-                              /            |            \
-                             v             v             v
-                  +----------------+ +----------------+ +----------------+
-                  |  Web Server 1  | |  Web Server 2  | |  Web Server N  |
-                  | (Stateless API)| | (Stateless API)| | (Stateless API)|
-                  +----------------+ +----------------+ +----------------+
-                    |           /            \             \
-                    v          /              \             \
-    (Write Path) +---------------------+ (Read Path) +----------------+
-                 | URL Shortening Svc  |             | Redirection Svc  |
-                 +---------------------+             +----------------+
-                    |          \                           |
-                    v           v                          v
-      +-----------------------------+         +--------------------------+
-      | Unique ID Generation Svc    |         |  Cache (e.g., Redis)     |
-      +-----------------------------+         +--------------------------+
-                    |                                      | (Cache Miss)
-                    v                                      v
-      +------------------------------------------------------------------+
-      |                   Database (e.g., Cassandra / DynamoDB)          |
-      |                 (Partition Key: short_url_hash)                  |
-      +------------------------------------------------------------------+
-                    |
-                    v (Events)
-      +-----------------------------+
-      | Message Queue (e.g., Kafka) |
-      +-----------------------------+
-                    |
-                    v
-      +-----------------------------+
-      | Analytics Service           |
-      +-----------------------------+
-                    |
-                    v
-      +-----------------------------+
-      | Analytics Database          |
-      +-----------------------------+
+```mermaid
+graph TD
+    User[User / Client] --> LB[Load Balancer]
+
+    subgraph Write Path
+        ShorteningSvc[URL Shortening Service]
+        IdGenSvc[Unique ID Generation Service]
+        ShorteningSvc --> IdGenSvc
+        ShorteningSvc -- Writes --> DB
+    end
+
+    subgraph Read Path
+        RedirectionSvc[Redirection Service]
+        Cache[(Cache <br> e.g., Redis)]
+        RedirectionSvc -- Read from --> Cache
+        RedirectionSvc -- Cache Miss --> DB
+        Cache -- Writes to --> DB
+    end
+
+    subgraph Analytics Path
+        MQ[Message Queue <br> e.g., Kafka]
+        AnalyticsSvc[Analytics Service]
+        AnalyticsDB[(Analytics Database)]
+        RedirectionSvc -- Publishes Event --> MQ
+        AnalyticsSvc -- Consumes --> MQ
+        AnalyticsSvc --> AnalyticsDB
+    end
+
+    LB --> ShorteningSvc
+    LB --> RedirectionSvc
+
+    DB[(Database <br> Cassandra / DynamoDB)]
 ```
 
 ### 5.4 Component Overview

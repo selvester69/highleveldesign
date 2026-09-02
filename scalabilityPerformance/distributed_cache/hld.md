@@ -150,22 +150,51 @@ The primary purpose is to provide a fast, reliable, and scalable caching layer f
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-+-----------------+      +-----------------+      +-----------------+
-|   Client App    |----->|  Load Balancer  |<---->|   Cache Proxy   |
-+-----------------+      +-----------------+      +-----------------+
-                                                     |
-                                                     |
-       +---------------------------------------------+
-       |
-+------v------+      +-------------+      +-------------+      +-------------+
-| Shard Router|----->| Cache Node 1|----->| Cache Node 2|----->| Cache Node N|
-| (in Proxy)  |      |  (Primary)  |      |  (Primary)  |      |  (Primary)  |
-+-------------+      +------^------+      +------^------+      +------^------+
-                            |                     |                     |
-                      +-----v------+        +-----v------+        +-----v------+
-                      | Replica 1A |        | Replica 2A |        | Replica NA |
-                      +------------+        +------------+        +------------+
+```mermaid
+graph TD
+    subgraph "Client"
+        ClientApp["Client App"]
+    end
+
+    subgraph "Infrastructure"
+        LB["Load Balancer"]
+        Proxy["Cache Proxy / Shard Router"]
+    end
+
+    subgraph "Cache Cluster"
+        direction TB
+
+        subgraph "Primary Nodes"
+            direction LR
+            Node1["Cache Node 1 (Primary)"]
+            Node2["Cache Node 2 (Primary)"]
+            NodeN["..."]
+        end
+
+        subgraph "Replica Nodes"
+            direction LR
+            Replica1["Replica 1A"]
+            Replica2["Replica 2A"]
+            ReplicaN["..."]
+        end
+
+        Node1 --> Replica1
+        Node2 --> Replica2
+        NodeN --> ReplicaN
+
+        linkStyle 0 stroke-width:2px,fill:none,stroke:black;
+        linkStyle 1 stroke-width:2px,fill:none,stroke:black;
+        linkStyle 2 stroke-width:2px,fill:none,stroke:black;
+    end
+
+    ClientApp --> LB
+    LB <--> Proxy
+    Proxy --> Node1
+    Proxy --> Node2
+    Proxy --> NodeN
+
+    Node1 -- "Gossip" --- Node2
+    Node2 -- "Gossip" --- NodeN
 ```
 
 ### 5.4 Component Overview
