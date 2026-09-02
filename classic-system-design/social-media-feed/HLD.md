@@ -174,38 +174,43 @@ The system's purpose is to provide the core functionality of a social media serv
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-+----------------+   +----------------+   +----------------+
-|  User Service  |   | Follow Service |   |  Post Service  |
-| (User Profiles)|   | (Social Graph) |   | (Stores Posts) |
-+-------+--------+   +-------+--------+   +--------+-------+
-        |                  |                     ^
-        | (User Info)      | (Follower Lists)    | (1. Write Post)
-        v                  v                     |
-+------------------------------------------------+--------+
-|                      API Gateway / Load Balancer        |
-+------------------------------------------------+--------+
-      ^                         |                         |
-(3. Read Feed)                  | (2. Post Published Event) v
-      |                         v                         +----------------+
-      |               +-----------------+                 |  Fan-out Svc   |
-      |               |  Message Queue  |                 +-------+--------+
-      |               |  (e.g., Kafka)  |                         |
-      |               +-----------------+                         | (Fetches Followers)
-      |                         ^                                 v
-      |                         | (Fan-out jobs)          +----------------+
-      v                         +-------------------------| Follower Cache |
-+----------------+                                        +----------------+
-|  Feed Service  |                                        |
-| (Reads Feeds)  |                                        v (4. Push to feeds)
-+-------+--------+                                  +----------------+
-        |                                           |  User Feeds DB |
-        | (Reads from Cache/DB)                     | (e.g., Redis)  |
-        v                                           +----------------+
-+----------------+
-| Feed Cache     |
-| (e.g., Redis)  |
-+----------------+
+```mermaid
+graph TD
+    subgraph User
+        Client
+    end
+
+    subgraph Backend
+        APIGateway[API Gateway / LB]
+
+        subgraph Write Path
+            PostSvc[Post Service]
+            MQ[Message Queue <br> e.g., Kafka]
+            FanoutSvc[Fan-out Service]
+            FollowSvc[Follow Service <br> (Social Graph)]
+            UserFeedsDB[(User Feeds DB <br> e.g., Redis)]
+        end
+
+        subgraph Read Path
+            FeedSvc[Feed Service]
+            FeedCache[(Feed Cache <br> e.g., Redis)]
+        end
+    end
+
+    Client -- 1. Create Post --> APIGateway
+    APIGateway --> PostSvc
+    PostSvc -- 2. Post Event --> MQ
+
+    FanoutSvc -- Consumes --> MQ
+    FanoutSvc -- 3. Get Followers --> FollowSvc
+    FanoutSvc -- 4. Push to Feeds --> UserFeedsDB
+
+    Client -- 5. Get Feed --> APIGateway
+    APIGateway --> FeedSvc
+    FeedSvc -- 6. Read Feed --> UserFeedsDB
+    FeedSvc -- 7. Hydrate Posts --> PostSvc
+    FeedSvc -- Caches results in --> FeedCache
+    FeedSvc --> Client
 ```
 
 ### 5.4 Component Overview

@@ -79,40 +79,48 @@ The architecture is centered around a stateful **Chat Service** that maintains p
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-+----------------+      +----------------------+      +--------------------+
-| Mobile Client  |      |     Web Client       |      | Desktop Client     |
-+-------+--------+      +-----------+----------+      +---------+----------+
-        | (WebSocket)              | (WebSocket)               | (WebSocket)
-        v                          v                           v
-+-------------------------------------------------------------------------+
-|                      Load Balancer / API Gateway                        |
-|                  (Manages Connections -> Chat Servers)                  |
-+-------------------------------------------------------------------------+
-        | (Connections distributed based on user_id hash or load)
-        v
-+-------------------------------------------------------------------------+
-|                      Chat Service Cluster (Stateful)                    |
-|                                                                         |
-|  [ Chat Server 1 ]  [ Chat Server 2 ]  [ Chat Server 3 ] ... [ Chat Sn ] |
-|  - Manages WebSocket connections for a subset of users                  |
-|  - Tracks user presence (online/offline)                                |
-|  - Forwards messages between connected users                            |
-|  - Uses a Service Discovery mechanism (e.g., ZooKeeper) to find users   |
-+-------------------------------------------------------------------------+
-      | (Async) |                            | (Sync)
-      v         v                            v
-+-----------------+   +------------------+   +-----------------------------+
-| Push Notification|  |  Message Service |   | User/Auth Service (Stateless)|
-| Service (APNS/FCM)|  | (Stores/Retrieves|   | - Manages profiles & login   |
-+-----------------+   |   messages)      |   +-----------------------------+
-                      +--------+---------+
-                               |
-                               v
-                      +------------------+
-                      | Messages DB      |
-                      | (e.g., Cassandra)|
-                      +------------------+
+```mermaid
+graph TD
+    subgraph Clients
+        A[Mobile Client]
+        B[Web Client]
+        C[Desktop Client]
+    end
+
+    subgraph Backend
+        LB[Load Balancer / API Gateway]
+
+        subgraph Chat Service Cluster (Stateful)
+            direction LR
+            CS1[Chat Server 1]
+            CS2[Chat Server 2]
+            CS3[...]
+        end
+
+        subgraph Supporting Services
+            PNS[Push Notification Service]
+            MS[Message Service]
+            UAS[User/Auth Service]
+        end
+
+        DB[(Messages DB e.g., Cassandra)]
+    end
+
+    A -- WebSocket --> LB
+    B -- WebSocket --> LB
+    C -- WebSocket --> LB
+
+    LB -- Connection --> CS1
+    LB -- Connection --> CS2
+
+    CS1 <--> CS2
+    CS2 <--> CS3
+
+    Chat_Service_Cluster -- Async --> PNS
+    Chat_Service_cluster -- Sync --> MS
+    Chat_Service_Cluster -- Sync --> UAS
+
+    MS --> DB
 ```
 
 ### 5.4 Component Overview

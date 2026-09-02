@@ -147,24 +147,35 @@ To provide a highly scalable and available database solution for applications th
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-+--------------+      +------------------------------------------------+
-| Client App   |----->|          Distributed Key-Value Cluster         |
-+--------------+      |                                                |
-                      |  +--------+   +--------+   +--------+   +--------+  |
-                      |  | Node 1 |---|-Node 2-|---| Node 3 |---| Node N |  |
-                      |  +---^----+   +----^---+   +----^---+   +----^---+  |
-                      |      |             |          |            |       |
-                      |      +-------------+----------+------------+       |
-                      |           (Gossip Protocol for Membership)         |
-                      +------------------------------------------------+
+```mermaid
+graph TD
+    subgraph "Client"
+        ClientApp["Client Application"]
+    end
 
-// Request Flow (Example: Write with Quorum)
-1. Client sends write request to any node (Coordinator).
-2. Coordinator uses the consistent hash ring to identify the N replicas for the key.
-3. Coordinator sends the write to all N replicas.
-4. Coordinator waits for acknowledgements from a quorum of replicas (W < N).
-5. Coordinator returns success to the client.
+    subgraph "Distributed Key-Value Cluster (Peer-to-Peer)"
+        Node1["Node 1 (Coordinator for this request)"]
+        Node2["Node 2 (Replica)"]
+        Node3["Node 3 (Replica)"]
+        NodeN["Node N (Replica)"]
+
+        Node1 <--> Node2
+        Node2 <--> Node3
+        Node3 <--> NodeN
+        NodeN <--> Node1
+    end
+
+    ClientApp -- "1. Write(K,V)" --> Node1
+    Node1 -- "2. Forward Write" --> Node2
+    Node1 -- "2. Forward Write" --> Node3
+    Node1 -- "2. Forward Write" --> NodeN
+
+    Node2 -- "3. Ack" --> Node1
+    Node3 -- "3. Ack" --> Node1
+
+    Node1 -- "4. Success (Quorum W=2)" --> ClientApp
+
+    style Node1 fill:#f9f,stroke:#333,stroke-width:2px
 ```
 
 ### 5.4 Component Overview

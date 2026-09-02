@@ -153,40 +153,36 @@ The system's purpose is to provide a platform for content creators to upload vid
 
 ### 5.3 High-Level Architecture Diagram
 
-```text
-+--------------+   (1. Upload)   +-----------------+   (2. Trigger)   +---------------+
-| User's       | ------------> |   Raw Video     | ---------------> | Message Queue |
-| Browser/App  |               |   Storage (S3)  |                  | (e.g., SQS)   |
-+--------------+               +-----------------+                  +-------+-------+
-                                                                           | (3. Jobs)
-                                                                           v
-                                                         +------------------------------------+
-                                                         |  Video Processing Service (Workers)  |
-                                                         |                                    |
-                                                         | - Transcode to different bitrates  |
-                                                         | - Create manifest files (HLS/DASH) |
-                                                         | - Generate thumbnails              |
-                                                         +------------------+-----------------+
-                                                                            | (4. Store Artifacts)
-                                                                            v
-+--------------+   (7. Get video)  +-----------------+   (5. Update)   +-----------------+
-| Video Player | <-------------- |  Metadata DB    | <-------------- | Processed Video |
-+------+-------+                 | (PostgreSQL)    |                 | Storage (S3)    |
-       |                         +-----------------+                 +-------+---------+
-       | (6. Get Manifest)                                                   ^
-       v                                                                     |
-+----------------------+                                                     |
-| Streaming Service    |                                                     |
-| (Provides Signed URL |                                                     |
-|  for manifest file)  |                                                     |
-+----------------------+                                                     |
-       |                                                                     |
-       | (8. Get video segments from CDN)                                    |
-       +---------------------------------------------------------------------+
-                                       v
-                               +---------------+
-                               |      CDN      |
-                               +---------------+
+```mermaid
+graph TD
+    subgraph "Write Path (Video Processing)"
+        direction LR
+        ClientApp[User's Browser/App]
+        RawStorage[(Raw Video Storage <br> S3)]
+        MQ[Message Queue <br> e.g., SQS]
+        ProcessingSvc[Video Processing Service <br> (Workers)]
+        ProcessedStorage[(Processed Video Storage <br> S3)]
+        MetadataDB[(Metadata DB <br> PostgreSQL)]
+
+        ClientApp -- 1. Upload --> RawStorage
+        RawStorage -- 2. Trigger --> MQ
+        ProcessingSvc -- 3. Consumes Jobs --> MQ
+        ProcessingSvc -- 4. Stores Artifacts --> ProcessedStorage
+        ProcessingSvc -- 5. Updates Metadata --> MetadataDB
+    end
+
+    subgraph "Read Path (Video Streaming)"
+        direction TD
+        Player[Video Player]
+        StreamingSvc[Streaming Service]
+        CDN[CDN]
+
+        Player -- "7. Get video metadata" --> MetadataDB
+        Player -- "6. Get Manifest URL" --> StreamingSvc
+        StreamingSvc --> Player
+        Player -- "8. Get video segments" --> CDN
+        CDN -- Caches from --> ProcessedStorage
+    end
 ```
 
 ### 5.4 Component Overview
